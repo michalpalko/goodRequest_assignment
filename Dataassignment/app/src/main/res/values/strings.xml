@@ -3,4 +3,6 @@
     <string name="item_id">1</string>
     <string name="item_name">Michal</string>
     <string name="item_surname">Palko</string>
+
+    <string name="detail_email">michal.palko@example.com</string>
 </resources>
