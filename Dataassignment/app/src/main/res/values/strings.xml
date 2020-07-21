@@ -1,8 +1,8 @@
 <resources>
     <string name="app_name">Data assignment</string>
     <string name="item_id">1</string>
-    <string name="item_name">Michal</string>
-    <string name="item_surname">Palko</string>
+    <string name="item_name">Name</string>
+    <string name="item_surname">Surname</string>
 
     <string name="detail_email">michal.palko@example.com</string>
 </resources>
