@@ -10,7 +10,6 @@ import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.gson.GsonBuilder
-import com.google.gson.reflect.TypeToken
 import com.squareup.okhttp.Callback
 import com.squareup.okhttp.HttpUrl
 import com.squareup.okhttp.Request
@@ -35,20 +34,28 @@ class ListFragment() : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        Log.d(TAG, "onCreateView was called")
         return inflater.inflate(R.layout.fragment_list, container, false)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        Log.d(TAG, "onViewCreated was called")
 
         if (savedInstanceState!= null) {
-            list_rv_listOfData.layoutManager?.onRestoreInstanceState(savedInstanceState.getParcelable("recycler_position"))
+            usersArrayList = savedInstanceState.getParcelableArrayList<User>("users") as ArrayList<User>
+            recyclerAdapter = UsersAdapter(usersArrayList)
+            initRequest = savedInstanceState.getBoolean("initRequest")
         }
-        val linearLayoutManager = LinearLayoutManager(activity?.applicationContext)
 
+        if (initRequest){
+            getUsers(page)
+            initRequest = false
+        }
+        runUserFriendlyAnimation()
+
+        val linearLayoutManager = LinearLayoutManager(activity?.applicationContext)
         list_rv_listOfData.layoutManager = linearLayoutManager
+        list_rv_listOfData.adapter = recyclerAdapter
+        recyclerAdapter.stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
 
         list_rv_listOfData.addOnScrollListener(object: RecyclerView.OnScrollListener(){
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
@@ -68,25 +75,17 @@ class ListFragment() : Fragment() {
                 }
             }
         })
-        if (initRequest){
-            getUsers(page)
-            initRequest = false
-        }
-
-        list_rv_listOfData.adapter = recyclerAdapter
-        list_pb_loadingAnimation.visibility = View.GONE
-        list_srl_refresh.visibility = View.VISIBLE
 
         list_srl_refresh.setOnRefreshListener {
-            page = 1
             usersArrayList.clear()
+            page = 1
             getUsers(page)
         }
-
     }
 
     private fun getUsers(page: Int){
         list_srl_refresh.isRefreshing = true
+
         val urlBuilder = HttpUrl.parse("https://reqres.in/api/users").newBuilder()
         urlBuilder.addQueryParameter("page",page.toString())
         val urlString = urlBuilder.build().toString()
@@ -98,8 +97,7 @@ class ListFragment() : Fragment() {
         (activity as MainActivity).client.newCall(request).enqueue(object : Callback{
             override fun onFailure(request: Request?, e: IOException?) {
                 list_srl_refresh.isRefreshing = false
-                list_pb_loadingAnimation.visibility = View.GONE
-                list_srl_refresh.visibility = View.VISIBLE
+                runUserFriendlyAnimation()
                 e?.printStackTrace()
             }
 
@@ -108,9 +106,8 @@ class ListFragment() : Fragment() {
                     Log.d(TAG, response.toString())
                 }
                 else {
+                    Log.d(TAG, "Response is Succesfull.")
                     val stringData = response.body().string()
-                    println(stringData)
-
                     val gson = GsonBuilder().create()
                     val body = gson.fromJson(stringData,UsersData::class.java)
 
@@ -118,9 +115,7 @@ class ListFragment() : Fragment() {
 
                     activity?.runOnUiThread {
                         list_srl_refresh.isRefreshing = false
-                        list_pb_loadingAnimation.visibility = View.GONE
-                        list_srl_refresh.visibility = View.VISIBLE
-                        //list_rv_listOfData.adapter = UsersAdapter(usersArrayList)
+                        runUserFriendlyAnimation()
                         recyclerAdapter.notifyDataSetChanged()
                     }
                     loading = false
@@ -129,8 +124,15 @@ class ListFragment() : Fragment() {
         })
     }
 
+    fun runUserFriendlyAnimation(){
+        list_pb_loadingAnimation.visibility = View.GONE
+        list_srl_refresh.visibility = View.VISIBLE
+    }
+
     override fun onSaveInstanceState(outState: Bundle) {
-        outState.putParcelable("recycler_position", list_rv_listOfData.layoutManager?.onSaveInstanceState())
+        outState.putParcelableArrayList("users", usersArrayList)
+        outState.putBoolean("initRequest", initRequest)
         super.onSaveInstanceState(outState)
     }
+
 }
